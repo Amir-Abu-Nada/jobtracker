@@ -1,0 +1,9 @@
+[submodule "services/laravel-api"]
+	path = services/laravel-api
+	url = https://github.com/Amir-Abu-Nada/jobtracker-laravel-api
+[submodule "services/spring-api"]
+	path = services/spring-api
+	url = https://github.com/Amir-Abu-Nada/jobtracker-spring-api
+[submodule "services/frontend"]
+	path = services/frontend
+	url = https://github.com/Amir-Abu-Nada/jobtracker-frontend
