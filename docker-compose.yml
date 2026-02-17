@@ -1,0 +1,164 @@
+version: '3.8'
+
+services:
+  # ─── Nginx Reverse Proxy ───────────────────────────────────────────────────
+  nginx:
+    build:
+      context: ./nginx
+      dockerfile: Dockerfile
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/conf.d:/etc/nginx/conf.d
+    depends_on:
+      - laravel
+      - spring
+      - frontend
+    networks:
+      - jobtracker-network
+    restart: unless-stopped
+
+  # ─── Laravel API ──────────────────────────────────────────────────────────
+  laravel:
+    build:
+      context: ./services/laravel-api
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./services/laravel-api:/var/www/html
+      - /var/www/html/vendor
+    environment:
+      - APP_ENV=local
+      - APP_DEBUG=true
+    env_file:
+      - .env
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - jobtracker-network
+    restart: unless-stopped
+
+  laravel-worker:
+    build:
+      context: ./services/laravel-api
+      dockerfile: Dockerfile
+    command: php artisan queue:work --sleep=3 --tries=3 --max-time=3600
+    volumes:
+      - ./services/laravel-api:/var/www/html
+      - /var/www/html/vendor
+    env_file:
+      - .env
+    depends_on:
+      - laravel
+      - redis
+    networks:
+      - jobtracker-network
+    restart: unless-stopped
+
+  laravel-scheduler:
+    build:
+      context: ./services/laravel-api
+      dockerfile: Dockerfile
+    command: >
+      sh -c "while true; do php artisan schedule:run --verbose --no-interaction; sleep 60; done"
+    volumes:
+      - ./services/laravel-api:/var/www/html
+      - /var/www/html/vendor
+    env_file:
+      - .env
+    depends_on:
+      - laravel
+    networks:
+      - jobtracker-network
+    restart: unless-stopped
+
+  # ─── Spring Boot API ──────────────────────────────────────────────────────
+  spring:
+    build:
+      context: ./services/spring-api
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/${DB_DATABASE:-jobtracker}
+      - SPRING_DATASOURCE_USERNAME=${DB_USERNAME:-jobtracker}
+      - SPRING_DATASOURCE_PASSWORD=${DB_PASSWORD:-secret}
+      - SPRING_REDIS_HOST=redis
+      - SPRING_REDIS_PORT=6379
+    env_file:
+      - .env
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - jobtracker-network
+    restart: unless-stopped
+
+  # ─── React Frontend ───────────────────────────────────────────────────────
+  frontend:
+    build:
+      context: ./services/frontend
+      dockerfile: Dockerfile
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./services/frontend:/app
+      - /app/node_modules
+    environment:
+      - VITE_API_URL=http://localhost/api
+    networks:
+      - jobtracker-network
+    restart: unless-stopped
+
+  # ─── MySQL ────────────────────────────────────────────────────────────────
+  mysql:
+    image: mysql:8.0
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-rootsecret}
+      MYSQL_DATABASE: ${DB_DATABASE:-jobtracker}
+      MYSQL_USER: ${DB_USERNAME:-jobtracker}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-secret}
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ./docker/mysql/init:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 10s
+      retries: 10
+      interval: 5s
+    networks:
+      - jobtracker-network
+    restart: unless-stopped
+
+  # ─── Redis ────────────────────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      timeout: 5s
+      retries: 5
+      interval: 5s
+    networks:
+      - jobtracker-network
+    restart: unless-stopped
+
+networks:
+  jobtracker-network:
+    driver: bridge
+
+volumes:
+  mysql-data:
+  redis-data:

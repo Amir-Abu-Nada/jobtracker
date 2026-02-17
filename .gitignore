@@ -1,0 +1,54 @@
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Dependencies
+node_modules/
+vendor/
+
+# Build output
+dist/
+build/
+target/
+
+# Docker volumes (local)
+docker/mysql/data/
+docker/redis/data/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V7
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Laravel specific
+services/laravel-api/storage/logs/*.log
+services/laravel-api/storage/framework/cache/data/*
+services/laravel-api/storage/framework/sessions/*
+services/laravel-api/storage/framework/views/*
+services/laravel-api/bootstrap/cache/*.php
+services/laravel-api/.env
+
+# Spring Boot specific
+services/spring-api/.env
+services/spring-api/target/
+
+# Frontend specific
+services/frontend/.env
+services/frontend/dist/
