@@ -14,16 +14,17 @@ services:
       - certbot-www:/var/www/certbot
       - certbot-conf:/etc/letsencrypt
     depends_on:
-      - laravel
-      - spring
+      - laravel-auth
+      - spring-api
+      - spring-scraping
     networks:
       - jobtracker-network
     restart: always
 
-  # ─── Laravel API ──────────────────────────────────────────────────────────
-  laravel:
+  # ─── Laravel Auth Service ─────────────────────────────────────────────────
+  laravel-auth:
     build:
-      context: ./services/laravel-api
+      context: ./services/laravel-auth
       dockerfile: Dockerfile.prod
     environment:
       - APP_ENV=production
@@ -45,36 +46,50 @@ services:
           cpus: '0.5'
           memory: 512M
 
-  laravel-worker:
+  laravel-auth-worker:
     build:
-      context: ./services/laravel-api
+      context: ./services/laravel-auth
       dockerfile: Dockerfile.prod
     command: php artisan queue:work --sleep=3 --tries=3 --max-time=3600
     env_file:
       - .env
     depends_on:
-      - laravel
+      - laravel-auth
       - redis
     networks:
       - jobtracker-network
     restart: always
 
-  laravel-scheduler:
+  laravel-auth-scheduler:
     build:
-      context: ./services/laravel-api
+      context: ./services/laravel-auth
       dockerfile: Dockerfile.prod
     command: >
       sh -c "while true; do php artisan schedule:run --verbose --no-interaction; sleep 60; done"
     env_file:
       - .env
     depends_on:
-      - laravel
+      - laravel-auth
     networks:
       - jobtracker-network
     restart: always
 
-  # ─── Spring Boot API ──────────────────────────────────────────────────────
-  spring:
+  # ─── Laravel Emails Service ───────────────────────────────────────────────
+  laravel-emails:
+    build:
+      context: ./services/laravel-emails
+      dockerfile: Dockerfile
+    env_file:
+      - .env
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - jobtracker-network
+    restart: always
+
+  # ─── Spring Boot Applications & Analytics API ─────────────────────────────
+  spring-api:
     build:
       context: ./services/spring-api
       dockerfile: Dockerfile.prod
@@ -101,6 +116,34 @@ services:
         limits:
           cpus: '1'
           memory: 1G
+
+  # ─── Spring Boot Scraping & Extractor API ─────────────────────────────────
+  spring-scraping:
+    build:
+      context: ./services/spring-scraping
+      dockerfile: Dockerfile.prod
+    environment:
+      - SPRING_PROFILES_ACTIVE=production
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/${DB_DATABASE}
+      - SPRING_DATASOURCE_USERNAME=${DB_USERNAME}
+      - SPRING_DATASOURCE_PASSWORD=${DB_PASSWORD}
+      - SPRING_REDIS_HOST=redis
+      - SPRING_REDIS_PORT=6379
+    env_file:
+      - .env
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - jobtracker-network
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
 
   # ─── MySQL ────────────────────────────────────────────────────────────────
   mysql:

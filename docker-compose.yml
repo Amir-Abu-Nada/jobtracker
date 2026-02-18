@@ -11,22 +11,23 @@ services:
     volumes:
       - ./nginx/conf.d:/etc/nginx/conf.d
     depends_on:
-      - laravel
-      - spring
+      - laravel-auth
+      - spring-api
+      - spring-scraping
       - frontend
     networks:
       - jobtracker-network
     restart: unless-stopped
 
-  # ─── Laravel API ──────────────────────────────────────────────────────────
-  laravel:
+  # ─── Laravel Auth Service ─────────────────────────────────────────────────
+  laravel-auth:
     build:
-      context: ./services/laravel-api
+      context: ./services/laravel-auth
       dockerfile: Dockerfile
     ports:
       - "8000:8000"
     volumes:
-      - ./services/laravel-api:/var/www/html
+      - ./services/laravel-auth:/var/www/html
       - /var/www/html/vendor
     environment:
       - APP_ENV=local
@@ -42,47 +43,89 @@ services:
       - jobtracker-network
     restart: unless-stopped
 
-  laravel-worker:
+  laravel-auth-worker:
     build:
-      context: ./services/laravel-api
+      context: ./services/laravel-auth
       dockerfile: Dockerfile
     command: php artisan queue:work --sleep=3 --tries=3 --max-time=3600
     volumes:
-      - ./services/laravel-api:/var/www/html
+      - ./services/laravel-auth:/var/www/html
       - /var/www/html/vendor
     env_file:
       - .env
     depends_on:
-      - laravel
+      - laravel-auth
       - redis
     networks:
       - jobtracker-network
     restart: unless-stopped
 
-  laravel-scheduler:
+  laravel-auth-scheduler:
     build:
-      context: ./services/laravel-api
+      context: ./services/laravel-auth
       dockerfile: Dockerfile
     command: >
       sh -c "while true; do php artisan schedule:run --verbose --no-interaction; sleep 60; done"
     volumes:
-      - ./services/laravel-api:/var/www/html
+      - ./services/laravel-auth:/var/www/html
       - /var/www/html/vendor
     env_file:
       - .env
     depends_on:
-      - laravel
+      - laravel-auth
     networks:
       - jobtracker-network
     restart: unless-stopped
 
-  # ─── Spring Boot API ──────────────────────────────────────────────────────
-  spring:
+  # ─── Laravel Emails Service ───────────────────────────────────────────────
+  laravel-emails:
+    build:
+      context: ./services/laravel-emails
+      dockerfile: Dockerfile
+    volumes:
+      - ./services/laravel-emails:/var/www/html
+      - /var/www/html/vendor
+    env_file:
+      - .env
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - jobtracker-network
+    restart: unless-stopped
+
+  # ─── Spring Boot Applications & Analytics API ─────────────────────────────
+  spring-api:
     build:
       context: ./services/spring-api
       dockerfile: Dockerfile
     ports:
       - "8080:8080"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/${DB_DATABASE:-jobtracker}
+      - SPRING_DATASOURCE_USERNAME=${DB_USERNAME:-jobtracker}
+      - SPRING_DATASOURCE_PASSWORD=${DB_PASSWORD:-secret}
+      - SPRING_REDIS_HOST=redis
+      - SPRING_REDIS_PORT=6379
+    env_file:
+      - .env
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - jobtracker-network
+    restart: unless-stopped
+
+  # ─── Spring Boot Scraping & Extractor API ─────────────────────────────────
+  spring-scraping:
+    build:
+      context: ./services/spring-scraping
+      dockerfile: Dockerfile
+    ports:
+      - "8081:8080"
     environment:
       - SPRING_PROFILES_ACTIVE=docker
       - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/${DB_DATABASE:-jobtracker}

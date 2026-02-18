@@ -1,9 +1,15 @@
-[submodule "services/laravel-api"]
-	path = services/laravel-api
-	url = https://github.com/Amir-Abu-Nada/jobtracker-laravel-api
-[submodule "services/spring-api"]
-	path = services/spring-api
-	url = https://github.com/Amir-Abu-Nada/jobtracker-spring-api
 [submodule "services/frontend"]
 	path = services/frontend
 	url = https://github.com/Amir-Abu-Nada/jobtracker-frontend
+[submodule "services/laravel-auth"]
+	path = services/laravel-auth
+	url = https://github.com/Amir-Abu-Nada/jobtracker-laravel-auth.git
+[submodule "services/laravel-emails"]
+	path = services/laravel-emails
+	url = https://github.com/Amir-Abu-Nada/jobtracker-laravel-emails.git
+[submodule "services/spring-api"]
+	path = services/spring-api
+	url = https://github.com/Amir-Abu-Nada/jobtracker-spring-api.git
+[submodule "services/spring-scraping"]
+	path = services/spring-scraping
+	url = https://github.com/Amir-Abu-Nada/jobtracker-spring-scraping.git
