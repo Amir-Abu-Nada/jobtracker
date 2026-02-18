@@ -1,5 +1,5 @@
 .PHONY: up down build logs restart ps fresh env help \
-        laravel-auth-migrate laravel-auth-seed laravel-auth-fresh laravel-auth-shell laravel-auth-tinker laravel-auth-test laravel-auth-cache-clear \
+        laravel-auth-keys laravel-auth-migrate laravel-auth-seed laravel-auth-fresh laravel-auth-shell laravel-auth-tinker laravel-auth-test laravel-auth-cache-clear \
         laravel-emails-shell laravel-emails-logs \
         spring-api-shell spring-scraping-shell \
         mysql-shell
@@ -22,6 +22,7 @@ help:
 	@echo ""
 	@echo "  Laravel Auth"
 	@echo "  ------------"
+	@echo "  make laravel-auth-keys        Generate RSA key pair for JWT"
 	@echo "  make laravel-auth-migrate     Run database migrations"
 	@echo "  make laravel-auth-seed        Run database seeders"
 	@echo "  make laravel-auth-fresh       Fresh migrate + seed"
@@ -73,6 +74,9 @@ ps:
 	docker compose ps
 
 # ─── Laravel Auth ─────────────────────────────────────────────────────────────
+laravel-auth-keys:
+	docker compose exec laravel-auth php artisan auth:generate-keys
+
 laravel-auth-migrate:
 	docker compose exec laravel-auth php artisan migrate
 
