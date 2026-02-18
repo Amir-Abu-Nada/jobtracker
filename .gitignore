@@ -52,3 +52,7 @@ services/spring-api/target/
 # Frontend specific
 services/frontend/.env
 services/frontend/dist/
+
+# Claude files
+.claude/
+CLAUDE.md
